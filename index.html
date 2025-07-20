@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>El Viaje de Mateosaurio</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script> -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
@@ -296,7 +296,7 @@
             dinoImages[dino.name] = new Image();
         });
 
-        let synth; // Tone.js synth
+        // let synth; // Tone.js synth
 
         // --- INICIALIZACIÓN ---
         function init() {
@@ -333,7 +333,7 @@
             startButton.disabled = true;
 
             // Iniciar el contexto de audio con un gesto del usuario
-            await Tone.start();
+            // await Tone.start();
             
             // Ahora que el audio está activo, proceder a cargar los assets
             loadGameAssets();
@@ -393,12 +393,12 @@
         function startGame() {
             startModal.classList.remove('visible');
             
-            synth = new Tone.Synth().toDestination();
-            synth.oscillator.type = "sine";
-            synth.envelope.attack = 0.1;
-            synth.envelope.decay = 0.2;
-            synth.envelope.sustain = 0.1;
-            synth.envelope.release = 0.5;
+            // synth = new Tone.Synth().toDestination();
+            // synth.oscillator.type = "sine";
+            // synth.envelope.attack = 0.1;
+            // synth.envelope.decay = 0.2;
+            // synth.envelope.sustain = 0.1;
+            // synth.envelope.release = 0.5;
 
             gameState.isRunning = true;
             gameState.isPaused = false;
@@ -591,7 +591,7 @@
             speechBubbleEl.style.top = `${dino.y - speechBubbleEl.offsetHeight - 10}px`;
             speechBubbleEl.style.display = 'block';
             
-            synth.triggerAttackRelease("C4", "8n");
+            // synth.triggerAttackRelease("C4", "8n");
 
             setTimeout(() => {
                 const dinoData = DINO_FRIENDS_DATA.find(d => d.name === dino.name);
@@ -616,8 +616,8 @@
             speechBubbleEl.style.display = 'none';
 
             if (isFriend) {
-                synth.triggerAttackRelease("G4", "8n", Tone.now() + 0.1);
-                synth.triggerAttackRelease("E5", "8n", Tone.now() + 0.3);
+                // synth.triggerAttackRelease("G4", "8n", Tone.now() + 0.1);
+                // synth.triggerAttackRelease("E5", "8n", Tone.now() + 0.3);
                 
                 gameState.friends.push(gameState.currentEncounter);
                 dinoImages[gameState.currentEncounter.name].isFriend = true; 
@@ -632,7 +632,7 @@
                     gameState.isPaused = false;
                 }
             } else {
-                synth.triggerAttackRelease("C3", "4n");
+                // synth.triggerAttackRelease("C3", "4n");
                 document.getElementById('no-penalty-message').style.display = 'block';
                 
                 setTimeout(() => {
