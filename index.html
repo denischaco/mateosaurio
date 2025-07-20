@@ -102,6 +102,10 @@
             transform: scale(1.05);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
+        .modal-button:disabled {
+            background-color: #9E9E9E;
+            cursor: not-allowed;
+        }
         #yes-button {
             background-color: #4CAF50; /* Green */
         }
@@ -192,7 +196,7 @@
             <div class="modal-content">
                 <h1>¡Bienvenido al Viaje de Mateosaurio!</h1>
                 <p>Ayuda a Mateosaurio a caminar por su mundo. Manténlo en la zona tranquila (entre las marcas rosas) para ganar puntos de calma. ¡Haz muchos amigos dinosaurios!</p>
-                <p>Usa las <strong>teclas de flecha ARRIBA/ABAJO</strong> o <strong>toca la pantalla</strong> para moverte.</p>
+                <p>Usa las <strong>teclas de flecha</strong> o <strong>toca la pantalla</strong> para moverte.</p>
                 <button id="start-button" class="modal-button" style="background-color: #2196F3;">¡Empezar a Jugar!</button>
             </div>
         </div>
@@ -224,6 +228,7 @@
         // --- ASSETS Y CONFIGURACIÓN ---
         // INSTRUCCIONES: Para cambiar las imágenes, simplemente reemplaza el enlace (la URL que empieza con "https://...") por el enlace de tu nueva imagen.
         
+        // URL para la cabeza de Mateo.
         // URL para la cabeza de Mateo.
         const MATEO_HEAD_URL = './imagenes/cabeza_mateosaurio.png';
         
@@ -286,14 +291,10 @@
 
         // --- IMÁGENES Y SONIDOS ---
         const playerHeadImg = new Image();
-        playerHeadImg.src = MATEO_HEAD_URL;
         const playerBodyImg = new Image();
-        playerBodyImg.src = DINO_BODY_URL;
-        
         const dinoImages = {};
         DINO_FRIENDS_DATA.forEach(dino => {
             dinoImages[dino.name] = new Image();
-            dinoImages[dino.name].src = dino.cartoonUrl;
         });
 
         let synth; // Tone.js synth
@@ -303,27 +304,69 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
-            // Centrar jugador y zona de calma verticalmente
             gameState.player.y = canvas.height * 0.75 - gameState.player.height / 2;
             gameState.calmZone.y1 = canvas.height * 0.75 - gameState.calmZone.height / 2;
             gameState.calmZone.y2 = canvas.height * 0.75 + gameState.calmZone.height / 2;
             
-            // Fecha y total de amigos
             dateDisplay.textContent = new Date().toLocaleDateString('es-ES');
             friendsTotalEl.textContent = DINO_FRIENDS_DATA.length;
 
             // Event Listeners
-            startButton.addEventListener('click', startGame);
+            startButton.addEventListener('click', loadGameAssets);
             yesButton.addEventListener('click', () => handleFriendResponse(true));
             noButton.addEventListener('click', () => handleFriendResponse(false));
             nextRoundButton.addEventListener('click', startNewRound);
             
             window.addEventListener('keydown', handleInput);
             window.addEventListener('keyup', handleInput);
+            // FIX: Eventos táctiles corregidos para móvil
             window.addEventListener('touchstart', handleTouchInput);
-            window.addEventListener('touchmove', handleTouchInput);
             window.addEventListener('touchend', handleTouchInput);
             window.addEventListener('resize', init);
+        }
+
+        // --- LÓGICA DE CARGA DE ASSETS (FIX) ---
+        function loadGameAssets() {
+            startButton.textContent = 'Cargando...';
+            startButton.disabled = true;
+
+            const assetsToLoad = [
+                { obj: playerHeadImg, url: MATEO_HEAD_URL },
+                { obj: playerBodyImg, url: DINO_BODY_URL }
+            ];
+            DINO_FRIENDS_DATA.forEach(dino => {
+                assetsToLoad.push({ obj: dinoImages[dino.name], url: dino.cartoonUrl });
+            });
+
+            let assetsLoaded = 0;
+            const totalAssets = assetsToLoad.length;
+
+            if (totalAssets === 0) {
+                startGame();
+                return;
+            }
+            
+            const assetLoadedCallback = (url) => {
+                assetsLoaded++;
+                if (assetsLoaded >= totalAssets) {
+                    startGame();
+                }
+            };
+
+            assetsToLoad.forEach(asset => {
+                asset.obj.onload = () => assetLoadedCallback(asset.url);
+                asset.obj.onerror = () => {
+                    console.error(`Error al cargar la imagen: ${asset.url}`);
+                    assetLoadedCallback(asset.url); // Tratar el error como "cargado" para no bloquear el juego
+                };
+                asset.obj.src = asset.url;
+            });
+            
+            // Precargar imágenes reales en segundo plano
+            DINO_FRIENDS_DATA.forEach(dino => {
+                const realImg = new Image();
+                realImg.src = dino.realUrl;
+            });
         }
 
         function resetRound() {
@@ -333,7 +376,6 @@
             gameState.nextDinoSpawn = 0;
             gameState.player.y = canvas.height * 0.75 - gameState.player.height / 2;
             
-            // Resetear el estado de 'isFriend' para que los dinos puedan reaparecer
             Object.values(dinoImages).forEach(img => img.isFriend = false);
 
             updateUI();
@@ -372,41 +414,43 @@
             if (e.type === 'keyup') keyState[e.code] = false;
         }
         
-        let lastTouchY = null;
+        // FIX: Lógica de control táctil simplificada para móvil
         function handleTouchInput(e) {
-            e.preventDefault();
+            e.preventDefault(); 
+            if (gameState.isPaused || !gameState.isRunning) return;
+
             if (e.type === 'touchend') {
-                lastTouchY = null;
-                gameState.player.dy = 0;
+                gameState.player.dy = 0; // Detener movimiento al soltar
                 return;
             }
-            const touch = e.touches[0];
-            if (lastTouchY !== null) {
-                const deltaY = touch.clientY - lastTouchY;
-                gameState.player.y += deltaY;
+
+            if (e.type === 'touchstart') {
+                const touch = e.touches[0];
+                // Si el toque es en la mitad superior de la pantalla, mover hacia arriba
+                if (touch.clientY < window.innerHeight / 2) {
+                    gameState.player.dy = -4;
+                } else { // Si no, mover hacia abajo
+                    gameState.player.dy = 4;
+                }
             }
-            lastTouchY = touch.clientY;
         }
         
         function updatePlayerPosition() {
             if (gameState.isPaused) return;
 
-            // Keyboard controls
             if (keyState['ArrowUp'] || keyState['KeyW']) {
                 gameState.player.dy = -4;
             } else if (keyState['ArrowDown'] || keyState['KeyS']) {
                 gameState.player.dy = 4;
-            } else {
-                gameState.player.dy = 0;
+            } else if (!('ontouchstart' in window)) { // Solo resetear si no es un dispositivo táctil
+                 gameState.player.dy = 0;
             }
             gameState.player.y += gameState.player.dy;
 
-            // Limitar movimiento a la zona del suelo
             const groundLevel = canvas.height * 0.7;
             const skyLimit = groundLevel - gameState.player.height;
             gameState.player.y = Math.max(skyLimit, Math.min(gameState.player.y, canvas.height - gameState.player.height));
         }
-
 
         // --- BUCLE PRINCIPAL DEL JUEGO ---
         function gameLoop() {
@@ -455,7 +499,7 @@
                 const isFlying = dinoData.name === 'Pterodáctilo';
                 const dinoY = isFlying 
                     ? canvas.height * 0.4 + Math.random() * (canvas.height * 0.2)
-                    : canvas.height * 0.75 - 100; // Ground level
+                    : canvas.height * 0.75 - 100;
 
                 gameState.otherDinos.push({
                     ...dinoData,
@@ -465,7 +509,7 @@
                     height: 120,
                     encountered: false
                 });
-                gameState.nextDinoSpawn = 400 + Math.random() * 400; // Random spawn time
+                gameState.nextDinoSpawn = 400 + Math.random() * 400;
             }
         }
 
@@ -473,7 +517,6 @@
             gameState.otherDinos.forEach(dino => {
                 dino.x -= gameState.gameSpeed * 1.5;
             });
-            // Remove dinos off-screen
             gameState.otherDinos = gameState.otherDinos.filter(dino => dino.x > -dino.width);
         }
 
@@ -497,7 +540,7 @@
 
         // --- FUNCIONES DE DIBUJO (DRAW) ---
         function drawCalmZone() {
-            ctx.fillStyle = 'rgba(255, 105, 180, 0.2)'; // Pink, semi-transparent
+            ctx.fillStyle = 'rgba(255, 105, 180, 0.2)';
             ctx.beginPath();
             ctx.arc(gameState.player.x + gameState.player.width/2, gameState.calmZone.y1 + (gameState.calmZone.height/2), gameState.calmZone.height/2 + 20, 0, Math.PI * 2);
             ctx.fill();
@@ -514,18 +557,22 @@
         }
 
         function drawPlayer() {
-            // Draw body
-            ctx.drawImage(playerBodyImg, gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
-            // Draw head
-            const headX = gameState.player.x + gameState.player.width * 0.5;
-            const headY = gameState.player.y - 20;
-            ctx.drawImage(playerHeadImg, headX, headY, 80, 80);
+            // Comprobación de seguridad para asegurar que la imagen está cargada
+            if (playerBodyImg.complete && playerBodyImg.naturalWidth !== 0) {
+                ctx.drawImage(playerBodyImg, gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+            }
+            if (playerHeadImg.complete && playerHeadImg.naturalWidth !== 0) {
+                const headX = gameState.player.x + gameState.player.width * 0.5;
+                const headY = gameState.player.y - 20;
+                ctx.drawImage(playerHeadImg, headX, headY, 80, 80);
+            }
         }
 
         function drawDinos() {
             gameState.otherDinos.forEach(dino => {
                 const img = dinoImages[dino.name];
-                if (img) {
+                // Comprobación de seguridad para asegurar que la imagen está cargada
+                if (img && img.complete && img.naturalWidth !== 0) {
                     ctx.drawImage(img, dino.x, dino.y, dino.width, dino.height);
                 }
             });
@@ -536,16 +583,13 @@
             gameState.isPaused = true;
             gameState.currentEncounter = dino;
 
-            // Show speech bubble
             speechBubbleEl.textContent = `¡HOLA MATEO, SOY ${dino.name.toUpperCase()}!`;
             speechBubbleEl.style.left = `${dino.x - speechBubbleEl.offsetWidth / 2 + dino.width / 2}px`;
             speechBubbleEl.style.top = `${dino.y - speechBubbleEl.offsetHeight - 10}px`;
             speechBubbleEl.style.display = 'block';
             
-            // Play a gentle sound
             synth.triggerAttackRelease("C4", "8n");
 
-            // Show modal after a delay
             setTimeout(() => {
                 const dinoData = DINO_FRIENDS_DATA.find(d => d.name === dino.name);
                 if (dinoData) {
@@ -563,9 +607,7 @@
             realDinoImgEl.style.display = 'none';
             realDinoNameEl.textContent = '';
             
-            if (!gameState.currentEncounter) {
-                return;
-            }
+            if (!gameState.currentEncounter) return;
 
             friendModal.classList.remove('visible');
             speechBubbleEl.style.display = 'none';
@@ -623,7 +665,6 @@
             calmPointsEl.textContent = Math.floor(gameState.calmPoints);
             roundCountEl.textContent = gameState.round;
 
-            // Update friends list display
             friendsListEl.innerHTML = '';
             gameState.friends.forEach(friend => {
                 if (friend) {
