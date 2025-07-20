@@ -225,6 +225,9 @@
     </div>
 
     <script>
+        // --- ASSETS Y CONFIGURACIÓN ---
+        // INSTRUCCIONES: Para cambiar las imágenes, simplemente reemplaza el enlace (la URL que empieza con "https://...") por el enlace de tu nueva imagen.
+        
         // URL para la cabeza de Mateo.
         const MATEO_HEAD_URL = './imagenes/cabeza_mateosaurio.png';
         
@@ -308,7 +311,7 @@
             friendsTotalEl.textContent = DINO_FRIENDS_DATA.length;
 
             // Event Listeners
-            startButton.addEventListener('click', loadGameAssets);
+            startButton.addEventListener('click', handleStartClick);
             yesButton.addEventListener('click', () => handleFriendResponse(true));
             noButton.addEventListener('click', () => handleFriendResponse(false));
             nextRoundButton.addEventListener('click', startNewRound);
@@ -324,15 +327,19 @@
         }
 
         // --- LÓGICA DE CARGA DE ASSETS ---
-        function loadGameAssets() {
+        // FIX: Función separada para manejar el clic inicial y activar el audio de forma segura
+        async function handleStartClick() {
             startButton.textContent = 'Cargando...';
             startButton.disabled = true;
 
-            // FIX: Iniciar el contexto de audio con un gesto del usuario
-            if (Tone.context.state !== 'running') {
-                Tone.start();
-            }
+            // Iniciar el contexto de audio con un gesto del usuario
+            await Tone.start();
+            
+            // Ahora que el audio está activo, proceder a cargar los assets
+            loadGameAssets();
+        }
 
+        function loadGameAssets() {
             const assetsToLoad = [
                 { obj: playerHeadImg, url: MATEO_HEAD_URL },
                 { obj: playerBodyImg, url: DINO_BODY_URL }
