@@ -225,10 +225,6 @@
     </div>
 
     <script>
-        // --- ASSETS Y CONFIGURACIÓN ---
-        // INSTRUCCIONES: Para cambiar las imágenes, simplemente reemplaza el enlace (la URL que empieza con "https://...") por el enlace de tu nueva imagen.
-        
-        // URL para la cabeza de Mateo.
         // URL para la cabeza de Mateo.
         const MATEO_HEAD_URL = './imagenes/cabeza_mateosaurio.png';
         
@@ -319,16 +315,23 @@
             
             window.addEventListener('keydown', handleInput);
             window.addEventListener('keyup', handleInput);
-            // FIX: Eventos táctiles corregidos para móvil
-            window.addEventListener('touchstart', handleTouchInput);
-            window.addEventListener('touchend', handleTouchInput);
+            
+            // FIX: Añadir { passive: false } para permitir preventDefault y evitar el scroll en móviles
+            window.addEventListener('touchstart', handleTouchInput, { passive: false });
+            window.addEventListener('touchend', handleTouchInput, { passive: false });
+            
             window.addEventListener('resize', init);
         }
 
-        // --- LÓGICA DE CARGA DE ASSETS (FIX) ---
+        // --- LÓGICA DE CARGA DE ASSETS ---
         function loadGameAssets() {
             startButton.textContent = 'Cargando...';
             startButton.disabled = true;
+
+            // FIX: Iniciar el contexto de audio con un gesto del usuario
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
 
             const assetsToLoad = [
                 { obj: playerHeadImg, url: MATEO_HEAD_URL },
@@ -357,12 +360,11 @@
                 asset.obj.onload = () => assetLoadedCallback(asset.url);
                 asset.obj.onerror = () => {
                     console.error(`Error al cargar la imagen: ${asset.url}`);
-                    assetLoadedCallback(asset.url); // Tratar el error como "cargado" para no bloquear el juego
+                    assetLoadedCallback(asset.url); 
                 };
                 asset.obj.src = asset.url;
             });
             
-            // Precargar imágenes reales en segundo plano
             DINO_FRIENDS_DATA.forEach(dino => {
                 const realImg = new Image();
                 realImg.src = dino.realUrl;
@@ -383,9 +385,7 @@
 
         function startGame() {
             startModal.classList.remove('visible');
-            if (Tone.context.state !== 'running') {
-                Tone.start();
-            }
+            
             synth = new Tone.Synth().toDestination();
             synth.oscillator.type = "sine";
             synth.envelope.attack = 0.1;
@@ -414,22 +414,20 @@
             if (e.type === 'keyup') keyState[e.code] = false;
         }
         
-        // FIX: Lógica de control táctil simplificada para móvil
         function handleTouchInput(e) {
             e.preventDefault(); 
             if (gameState.isPaused || !gameState.isRunning) return;
 
             if (e.type === 'touchend') {
-                gameState.player.dy = 0; // Detener movimiento al soltar
+                gameState.player.dy = 0;
                 return;
             }
 
             if (e.type === 'touchstart') {
                 const touch = e.touches[0];
-                // Si el toque es en la mitad superior de la pantalla, mover hacia arriba
                 if (touch.clientY < window.innerHeight / 2) {
                     gameState.player.dy = -4;
-                } else { // Si no, mover hacia abajo
+                } else {
                     gameState.player.dy = 4;
                 }
             }
@@ -442,7 +440,7 @@
                 gameState.player.dy = -4;
             } else if (keyState['ArrowDown'] || keyState['KeyS']) {
                 gameState.player.dy = 4;
-            } else if (!('ontouchstart' in window)) { // Solo resetear si no es un dispositivo táctil
+            } else if (!('ontouchstart' in window)) {
                  gameState.player.dy = 0;
             }
             gameState.player.y += gameState.player.dy;
@@ -557,7 +555,6 @@
         }
 
         function drawPlayer() {
-            // Comprobación de seguridad para asegurar que la imagen está cargada
             if (playerBodyImg.complete && playerBodyImg.naturalWidth !== 0) {
                 ctx.drawImage(playerBodyImg, gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
             }
@@ -571,7 +568,6 @@
         function drawDinos() {
             gameState.otherDinos.forEach(dino => {
                 const img = dinoImages[dino.name];
-                // Comprobación de seguridad para asegurar que la imagen está cargada
                 if (img && img.complete && img.naturalWidth !== 0) {
                     ctx.drawImage(img, dino.x, dino.y, dino.width, dino.height);
                 }
