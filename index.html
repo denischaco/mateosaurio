@@ -246,7 +246,7 @@
             { name: 'Parasaurolophus', cartoonUrl: './imagenes/Parasaurolophus.png', realUrl: './imagenes/Parasaurolophus.png' },
             { name: 'Velociraptor', cartoonUrl: './imagenes/Velociraptor.png', realUrl: './imagenes/Velociraptor.png' }
         ];
-        
+
         // --- ELEMENTOS DEL DOM ---
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
@@ -308,7 +308,13 @@
             friendsTotalEl.textContent = DINO_FRIENDS_DATA.length;
 
             // Event Listeners
-            startButton.addEventListener('click', handleStartClick);
+            startButton.addEventListener('click', tryStartGame);
+            // FIX: Añadir un listener de touchend para mayor fiabilidad en móviles
+            startButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                tryStartGame();
+            });
+
             yesButton.addEventListener('click', () => handleFriendResponse(true));
             noButton.addEventListener('click', () => handleFriendResponse(false));
             nextRoundButton.addEventListener('click', startNewRound);
@@ -316,58 +322,22 @@
             window.addEventListener('keydown', handleInput);
             window.addEventListener('keyup', handleInput);
             
-            // FIX: Añadir { passive: false } para permitir preventDefault y evitar el scroll en móviles
             window.addEventListener('touchstart', handleTouchInput, { passive: false });
             window.addEventListener('touchend', handleTouchInput, { passive: false });
             
             window.addEventListener('resize', init);
         }
 
-        // --- LÓGICA DE CARGA DE ASSETS ---
-        function handleStartClick() {
-            startButton.textContent = 'Cargando...';
-            startButton.disabled = true;
-            
-            loadGameAssets();
-        }
-
-        function loadGameAssets() {
-            const assetsToLoad = [
-                { obj: playerHeadImg, url: MATEO_HEAD_URL },
-                { obj: playerBodyImg, url: DINO_BODY_URL }
-            ];
-            DINO_FRIENDS_DATA.forEach(dino => {
-                assetsToLoad.push({ obj: dinoImages[dino.name], url: dino.cartoonUrl });
-            });
-
-            let assetsLoaded = 0;
-            const totalAssets = assetsToLoad.length;
-
-            if (totalAssets === 0) {
-                startGame();
+        // --- LÓGICA DE INICIO DEL JUEGO ---
+        function tryStartGame() {
+            // Guard para evitar que la función se ejecute varias veces por click y touch
+            if (gameState.isRunning) {
                 return;
             }
+            startButton.disabled = true;
             
-            const assetLoadedCallback = (url) => {
-                assetsLoaded++;
-                if (assetsLoaded >= totalAssets) {
-                    startGame();
-                }
-            };
-
-            assetsToLoad.forEach(asset => {
-                asset.obj.onload = () => assetLoadedCallback(asset.url);
-                asset.obj.onerror = () => {
-                    console.error(`Error al cargar la imagen: ${asset.url}`);
-                    assetLoadedCallback(asset.url); 
-                };
-                asset.obj.src = asset.url;
-            });
-            
-            DINO_FRIENDS_DATA.forEach(dino => {
-                const realImg = new Image();
-                realImg.src = dino.realUrl;
-            });
+            // Iniciar el juego inmediatamente
+            startGame();
         }
 
         function resetRound() {
@@ -387,6 +357,16 @@
             
             gameState.isRunning = true;
             gameState.isPaused = false;
+
+            // Cargar imágenes en segundo plano
+            playerHeadImg.src = MATEO_HEAD_URL;
+            playerBodyImg.src = DINO_BODY_URL;
+            DINO_FRIENDS_DATA.forEach(dino => {
+                dinoImages[dino.name].src = dino.cartoonUrl;
+                const realImg = new Image();
+                realImg.src = dino.realUrl;
+            });
+
             gameLoop();
         }
 
