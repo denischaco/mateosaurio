@@ -140,13 +140,20 @@
             margin-bottom: -20px;
         }
 
+        /* FIX: Styles for the sticky friends bar */
         #friends-list {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 190px; /* 80px icon + 10px gap + 80px icon + 20px padding */
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            box-sizing: border-box;
             display: flex;
+            flex-wrap: wrap; /* Allows items to wrap */
             gap: 10px;
-            align-items: flex-end;
+            align-content: flex-start; /* Aligns rows to the top */
             z-index: 5;
         }
         .friend-icon {
