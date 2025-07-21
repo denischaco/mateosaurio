@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>El Viaje de Mateosaurio</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script> -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
@@ -247,7 +246,7 @@
             { name: 'Parasaurolophus', cartoonUrl: './imagenes/Parasaurolophus.png', realUrl: './imagenes/Parasaurolophus.png' },
             { name: 'Velociraptor', cartoonUrl: './imagenes/Velociraptor.png', realUrl: './imagenes/Velociraptor.png' }
         ];
-
+        
         // --- ELEMENTOS DEL DOM ---
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
@@ -288,15 +287,13 @@
             currentEncounter: null
         };
 
-        // --- IMÁGENES Y SONIDOS ---
+        // --- IMÁGENES ---
         const playerHeadImg = new Image();
         const playerBodyImg = new Image();
         const dinoImages = {};
         DINO_FRIENDS_DATA.forEach(dino => {
             dinoImages[dino.name] = new Image();
         });
-
-        // let synth; // Tone.js synth
 
         // --- INICIALIZACIÓN ---
         function init() {
@@ -327,15 +324,10 @@
         }
 
         // --- LÓGICA DE CARGA DE ASSETS ---
-        // FIX: Función separada para manejar el clic inicial y activar el audio de forma segura
-        async function handleStartClick() {
+        function handleStartClick() {
             startButton.textContent = 'Cargando...';
             startButton.disabled = true;
-
-            // Iniciar el contexto de audio con un gesto del usuario
-            // await Tone.start();
             
-            // Ahora que el audio está activo, proceder a cargar los assets
             loadGameAssets();
         }
 
@@ -393,13 +385,6 @@
         function startGame() {
             startModal.classList.remove('visible');
             
-            // synth = new Tone.Synth().toDestination();
-            // synth.oscillator.type = "sine";
-            // synth.envelope.attack = 0.1;
-            // synth.envelope.decay = 0.2;
-            // synth.envelope.sustain = 0.1;
-            // synth.envelope.release = 0.5;
-
             gameState.isRunning = true;
             gameState.isPaused = false;
             gameLoop();
@@ -591,8 +576,6 @@
             speechBubbleEl.style.top = `${dino.y - speechBubbleEl.offsetHeight - 10}px`;
             speechBubbleEl.style.display = 'block';
             
-            // synth.triggerAttackRelease("C4", "8n");
-
             setTimeout(() => {
                 const dinoData = DINO_FRIENDS_DATA.find(d => d.name === dino.name);
                 if (dinoData) {
@@ -616,9 +599,6 @@
             speechBubbleEl.style.display = 'none';
 
             if (isFriend) {
-                // synth.triggerAttackRelease("G4", "8n", Tone.now() + 0.1);
-                // synth.triggerAttackRelease("E5", "8n", Tone.now() + 0.3);
-                
                 gameState.friends.push(gameState.currentEncounter);
                 dinoImages[gameState.currentEncounter.name].isFriend = true; 
                 
@@ -632,7 +612,6 @@
                     gameState.isPaused = false;
                 }
             } else {
-                // synth.triggerAttackRelease("C3", "4n");
                 document.getElementById('no-penalty-message').style.display = 'block';
                 
                 setTimeout(() => {
