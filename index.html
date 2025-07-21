@@ -16,7 +16,7 @@
         }
         #game-container {
             width: 100vw;
-            height: 100vh;
+            /* FIX: Height is now set by JavaScript to avoid mobile viewport issues */
             position: relative;
             overflow: hidden;
             background: linear-gradient(to bottom, #87CEEB 0%, #a2d2ff 55%, #80b918 55%, #55a630 100%);
@@ -140,7 +140,6 @@
             margin-bottom: -20px;
         }
 
-        /* FIX: Styles for the sticky friends bar */
         #friends-list {
             position: absolute;
             bottom: 0;
@@ -285,6 +284,7 @@
         ];
 
         // --- ELEMENTOS DEL DOM ---
+        const gameContainer = document.getElementById('game-container');
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         const dateDisplay = document.getElementById('date-display');
@@ -336,6 +336,8 @@
 
         // --- INICIALIZACIÓN ---
         function init() {
+            // FIX: Set container height dynamically to handle mobile viewport issues
+            gameContainer.style.height = `${window.innerHeight}px`;
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
@@ -448,9 +450,12 @@
 
             gameState.player.y += gameState.player.dy;
 
+            // FIX: Player Y-limit adjusted to not overlap the friends bar
+            const friendsListHeight = 190;
             const groundLevel = canvas.height * 0.55;
             const skyLimit = groundLevel - gameState.player.height;
-            gameState.player.y = Math.max(skyLimit, Math.min(gameState.player.y, canvas.height - gameState.player.height));
+            const floor = canvas.height - friendsListHeight;
+            gameState.player.y = Math.max(skyLimit, Math.min(gameState.player.y, floor - gameState.player.height));
         }
 
         // --- BUCLE PRINCIPAL DEL JUEGO ---
