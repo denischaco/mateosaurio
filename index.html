@@ -122,6 +122,8 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             z-index: 15;
             display: none; /* Hidden by default */
+            max-width: 80vw;
+            word-wrap: break-word;
         }
 
         .speech-bubble:after {
@@ -246,7 +248,6 @@
             { name: 'Parasaurolophus', cartoonUrl: './imagenes/Parasaurolophus.png', realUrl: './imagenes/Parasaurolophus.png' },
             { name: 'Velociraptor', cartoonUrl: './imagenes/Velociraptor.png', realUrl: './imagenes/Velociraptor.png' }
         ];
-
         // --- ELEMENTOS DEL DOM ---
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
@@ -300,6 +301,8 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
+            // FIX: Posición del jugador relativa al ancho para mejor visibilidad en móviles
+            gameState.player.x = canvas.width * 0.15;
             gameState.player.y = canvas.height * 0.75 - gameState.player.height / 2;
             gameState.calmZone.y1 = canvas.height * 0.75 - gameState.calmZone.height / 2;
             gameState.calmZone.y2 = canvas.height * 0.75 + gameState.calmZone.height / 2;
@@ -308,16 +311,21 @@
             friendsTotalEl.textContent = DINO_FRIENDS_DATA.length;
 
             // Event Listeners
-            startButton.addEventListener('click', tryStartGame);
-            // FIX: Añadir un listener de touchend para mayor fiabilidad en móviles
-            startButton.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                tryStartGame();
-            });
-
-            yesButton.addEventListener('click', () => handleFriendResponse(true));
-            noButton.addEventListener('click', () => handleFriendResponse(false));
-            nextRoundButton.addEventListener('click', startNewRound);
+            function setupButtonListener(button, callback) {
+                button.addEventListener('click', callback);
+                button.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    // Solo llamar al callback si el botón no está deshabilitado
+                    if (!button.disabled) {
+                        callback();
+                    }
+                });
+            }
+            
+            setupButtonListener(startButton, tryStartGame);
+            setupButtonListener(yesButton, () => handleFriendResponse(true));
+            setupButtonListener(noButton, () => handleFriendResponse(false));
+            setupButtonListener(nextRoundButton, startNewRound);
             
             window.addEventListener('keydown', handleInput);
             window.addEventListener('keyup', handleInput);
@@ -330,13 +338,10 @@
 
         // --- LÓGICA DE INICIO DEL JUEGO ---
         function tryStartGame() {
-            // Guard para evitar que la función se ejecute varias veces por click y touch
             if (gameState.isRunning) {
                 return;
             }
             startButton.disabled = true;
-            
-            // Iniciar el juego inmediatamente
             startGame();
         }
 
@@ -358,7 +363,6 @@
             gameState.isRunning = true;
             gameState.isPaused = false;
 
-            // Cargar imágenes en segundo plano
             playerHeadImg.src = MATEO_HEAD_URL;
             playerBodyImg.src = DINO_BODY_URL;
             DINO_FRIENDS_DATA.forEach(dino => {
@@ -552,7 +556,18 @@
             gameState.currentEncounter = dino;
 
             speechBubbleEl.textContent = `¡HOLA MATEO, SOY ${dino.name.toUpperCase()}!`;
-            speechBubbleEl.style.left = `${dino.x - speechBubbleEl.offsetWidth / 2 + dino.width / 2}px`;
+            
+            // FIX: Lógica para centrar y ajustar el globo de diálogo
+            const bubbleWidth = speechBubbleEl.offsetWidth;
+            let bubbleLeft = dino.x + (dino.width / 2) - (bubbleWidth / 2);
+            if (bubbleLeft < 10) {
+                bubbleLeft = 10;
+            }
+            if (bubbleLeft + bubbleWidth > canvas.width - 10) {
+                bubbleLeft = canvas.width - bubbleWidth - 10;
+            }
+
+            speechBubbleEl.style.left = `${bubbleLeft}px`;
             speechBubbleEl.style.top = `${dino.y - speechBubbleEl.offsetHeight - 10}px`;
             speechBubbleEl.style.display = 'block';
             
@@ -570,11 +585,12 @@
         }
 
         function handleFriendResponse(isFriend) {
+            // Guard para evitar doble ejecución
+            if (!gameState.currentEncounter) return;
+
             realDinoImgEl.style.display = 'none';
             realDinoNameEl.textContent = '';
             
-            if (!gameState.currentEncounter) return;
-
             friendModal.classList.remove('visible');
             speechBubbleEl.style.display = 'none';
 
