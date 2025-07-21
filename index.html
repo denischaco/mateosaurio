@@ -19,7 +19,8 @@
             height: 100vh;
             position: relative;
             overflow: hidden;
-            background: linear-gradient(to bottom, #87CEEB 0%, #a2d2ff 70%, #80b918 70%, #55a630 100%);
+            /* FIX: Ground level moved up from 70% to 60% */
+            background: linear-gradient(to bottom, #87CEEB 0%, #a2d2ff 60%, #80b918 60%, #55a630 100%);
         }
         canvas {
             display: block;
@@ -170,6 +171,34 @@
             font-size: clamp(1rem, 3vw, 1.2rem);
             margin: 20px 0;
         }
+        /* NEW: Styles for control buttons */
+        #controls-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .control-button {
+            width: 70px;
+            height: 70px;
+            background-color: rgba(0, 0, 0, 0.4);
+            border: 3px solid white;
+            border-radius: 50%;
+            color: white;
+            font-size: 40px;
+            line-height: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none; /* Prevent text selection */
+        }
+        .control-button:active {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
     </style>
 </head>
 <body>
@@ -189,6 +218,12 @@
 
         <div id="friends-list"></div>
 
+        <!-- NEW: Control Buttons -->
+        <div id="controls-container">
+            <button id="up-button" class="control-button">▲</button>
+            <button id="down-button" class="control-button">▼</button>
+        </div>
+
         <!-- Speech Bubble -->
         <div id="speech-bubble" class="speech-bubble"></div>
 
@@ -197,7 +232,7 @@
             <div class="modal-content">
                 <h1>¡Bienvenido al Viaje de Mateosaurio!</h1>
                 <p>Ayuda a Mateosaurio a caminar por su mundo. Manténlo en la zona tranquila (entre las marcas rosas) para ganar puntos de calma. ¡Haz muchos amigos dinosaurios!</p>
-                <p>Usa las <strong>teclas de flecha</strong> o <strong>toca la pantalla</strong> para moverte.</p>
+                <p>Usa las <strong>teclas de flecha</strong> o los <strong>botones ▲ ▼</strong> para moverte.</p>
                 <button id="start-button" class="modal-button" style="background-color: #2196F3;">¡Empezar a Jugar!</button>
             </div>
         </div>
@@ -227,8 +262,6 @@
 
     <script>
         // --- ASSETS Y CONFIGURACIÓN ---
-        // INSTRUCCIONES: Para cambiar las imágenes, simplemente reemplaza el enlace (la URL que empieza con "https://...") por el enlace de tu nueva imagen.
-        
         // URL para la cabeza de Mateo.
         const MATEO_HEAD_URL = './imagenes/cabeza_mateosaurio.png';
         
@@ -248,6 +281,7 @@
             { name: 'Parasaurolophus', cartoonUrl: './imagenes/Parasaurolophus.png', realUrl: './imagenes/Parasaurolophus.png' },
             { name: 'Velociraptor', cartoonUrl: './imagenes/Velociraptor.png', realUrl: './imagenes/Velociraptor.png' }
         ];
+
         // --- ELEMENTOS DEL DOM ---
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
@@ -271,6 +305,8 @@
         const yesButton = document.getElementById('yes-button');
         const noButton = document.getElementById('no-button');
         const nextRoundButton = document.getElementById('next-round-button');
+        const upButton = document.getElementById('up-button');
+        const downButton = document.getElementById('down-button');
 
         // --- ESTADO DEL JUEGO ---
         let gameState = {
@@ -301,11 +337,12 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
-            // FIX: Posición del jugador relativa al ancho para mejor visibilidad en móviles
+            // FIX: Player position relative to width and new ground level
             gameState.player.x = canvas.width * 0.15;
-            gameState.player.y = canvas.height * 0.75 - gameState.player.height / 2;
-            gameState.calmZone.y1 = canvas.height * 0.75 - gameState.calmZone.height / 2;
-            gameState.calmZone.y2 = canvas.height * 0.75 + gameState.calmZone.height / 2;
+            const groundYCenter = canvas.height * 0.65;
+            gameState.player.y = groundYCenter - gameState.player.height / 2;
+            gameState.calmZone.y1 = groundYCenter - gameState.calmZone.height / 2;
+            gameState.calmZone.y2 = groundYCenter + gameState.calmZone.height / 2;
             
             dateDisplay.textContent = new Date().toLocaleDateString('es-ES');
             friendsTotalEl.textContent = DINO_FRIENDS_DATA.length;
@@ -315,10 +352,7 @@
                 button.addEventListener('click', callback);
                 button.addEventListener('touchend', (e) => {
                     e.preventDefault();
-                    // Solo llamar al callback si el botón no está deshabilitado
-                    if (!button.disabled) {
-                        callback();
-                    }
+                    if (!button.disabled) callback();
                 });
             }
             
@@ -330,17 +364,26 @@
             window.addEventListener('keydown', handleInput);
             window.addEventListener('keyup', handleInput);
             
-            window.addEventListener('touchstart', handleTouchInput, { passive: false });
-            window.addEventListener('touchend', handleTouchInput, { passive: false });
+            // NEW: Listeners for new control buttons
+            function setupMoveButton(button, direction) {
+                const move = () => { if (!gameState.isPaused) gameState.player.dy = direction; };
+                const stop = () => { gameState.player.dy = 0; };
+                button.addEventListener('mousedown', move);
+                button.addEventListener('mouseup', stop);
+                button.addEventListener('mouseleave', stop); // Stop if mouse leaves button
+                button.addEventListener('touchstart', (e) => { e.preventDefault(); move(); }, { passive: false });
+                button.addEventListener('touchend', (e) => { e.preventDefault(); stop(); });
+            }
+
+            setupMoveButton(upButton, -4);
+            setupMoveButton(downButton, 4);
             
             window.addEventListener('resize', init);
         }
 
         // --- LÓGICA DE INICIO DEL JUEGO ---
         function tryStartGame() {
-            if (gameState.isRunning) {
-                return;
-            }
+            if (gameState.isRunning) return;
             startButton.disabled = true;
             startGame();
         }
@@ -350,10 +393,10 @@
             gameState.calmPoints = 0;
             gameState.otherDinos = [];
             gameState.nextDinoSpawn = 0;
-            gameState.player.y = canvas.height * 0.75 - gameState.player.height / 2;
+            const groundYCenter = canvas.height * 0.65;
+            gameState.player.y = groundYCenter - gameState.player.height / 2;
             
             Object.values(dinoImages).forEach(img => img.isFriend = false);
-
             updateUI();
         }
 
@@ -386,25 +429,14 @@
         // --- LÓGICA DE CONTROL ---
         const keyState = {};
         function handleInput(e) {
-            if (e.type === 'keydown') keyState[e.code] = true;
-            if (e.type === 'keyup') keyState[e.code] = false;
-        }
-        
-        function handleTouchInput(e) {
-            e.preventDefault(); 
-            if (gameState.isPaused || !gameState.isRunning) return;
-
-            if (e.type === 'touchend') {
-                gameState.player.dy = 0;
-                return;
+            if (gameState.isPaused) return;
+            if (e.type === 'keydown') {
+                if (e.code === 'ArrowUp' || e.code === 'KeyW') gameState.player.dy = -4;
+                if (e.code === 'ArrowDown' || e.code === 'KeyS') gameState.player.dy = 4;
             }
-
-            if (e.type === 'touchstart') {
-                const touch = e.touches[0];
-                if (touch.clientY < window.innerHeight / 2) {
-                    gameState.player.dy = -4;
-                } else {
-                    gameState.player.dy = 4;
+            if (e.type === 'keyup') {
+                if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'ArrowDown' || e.code === 'KeyS') {
+                    gameState.player.dy = 0;
                 }
             }
         }
@@ -412,16 +444,10 @@
         function updatePlayerPosition() {
             if (gameState.isPaused) return;
 
-            if (keyState['ArrowUp'] || keyState['KeyW']) {
-                gameState.player.dy = -4;
-            } else if (keyState['ArrowDown'] || keyState['KeyS']) {
-                gameState.player.dy = 4;
-            } else if (!('ontouchstart' in window)) {
-                 gameState.player.dy = 0;
-            }
             gameState.player.y += gameState.player.dy;
 
-            const groundLevel = canvas.height * 0.7;
+            // FIX: Player Y-limit adjusted for new ground level
+            const groundLevel = canvas.height * 0.60;
             const skyLimit = groundLevel - gameState.player.height;
             gameState.player.y = Math.max(skyLimit, Math.min(gameState.player.y, canvas.height - gameState.player.height));
         }
@@ -429,16 +455,13 @@
         // --- BUCLE PRINCIPAL DEL JUEGO ---
         function gameLoop() {
             if (!gameState.isRunning) return;
-
             update();
             draw();
-
             requestAnimationFrame(gameLoop);
         }
 
         function update() {
             if (gameState.isPaused) return;
-
             updatePlayerPosition();
             updateCalmPoints();
             spawnDinos();
@@ -471,9 +494,10 @@
                 const dinoData = availableDinos[Math.floor(Math.random() * availableDinos.length)];
                 
                 const isFlying = dinoData.name === 'Pterodáctilo';
+                // FIX: Y-position adjusted for new ground level
                 const dinoY = isFlying 
-                    ? canvas.height * 0.4 + Math.random() * (canvas.height * 0.2)
-                    : canvas.height * 0.75 - 100;
+                    ? canvas.height * 0.3 + Math.random() * (canvas.height * 0.2)
+                    : canvas.height * 0.65 - 100;
 
                 gameState.otherDinos.push({
                     ...dinoData,
@@ -497,15 +521,12 @@
         function checkCollisions() {
             for (const dino of gameState.otherDinos) {
                 if (dino.encountered) continue;
-
                 const playerRect = { x: gameState.player.x, y: gameState.player.y, width: gameState.player.width, height: gameState.player.height };
                 const dinoRect = { x: dino.x, y: dino.y, width: dino.width, height: dino.height };
-
                 if (playerRect.x < dinoRect.x + dinoRect.width &&
                     playerRect.x + playerRect.width > dinoRect.x &&
                     playerRect.y < dinoRect.y + dinoRect.height &&
                     playerRect.y + playerRect.height > dinoRect.y) {
-                    
                     dino.encountered = true;
                     handleEncounter(dino);
                 }
@@ -518,12 +539,10 @@
             ctx.beginPath();
             ctx.arc(gameState.player.x + gameState.player.width/2, gameState.calmZone.y1 + (gameState.calmZone.height/2), gameState.calmZone.height/2 + 20, 0, Math.PI * 2);
             ctx.fill();
-
             ctx.fillStyle = 'rgba(255, 105, 180, 0.3)';
             ctx.beginPath();
             ctx.arc(gameState.player.x + gameState.player.width/2, gameState.calmZone.y1 + (gameState.calmZone.height/2), gameState.calmZone.height/2, 0, Math.PI * 2);
             ctx.fill();
-
             ctx.font = "bold 16px Poppins";
             ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
             ctx.textAlign = "center";
@@ -554,22 +573,19 @@
         function handleEncounter(dino) {
             gameState.isPaused = true;
             gameState.currentEncounter = dino;
-
             speechBubbleEl.textContent = `¡HOLA MATEO, SOY ${dino.name.toUpperCase()}!`;
             
-            // FIX: Lógica para centrar y ajustar el globo de diálogo
+            // FIX: Logic to center and adjust the speech bubble
+            speechBubbleEl.style.display = 'block'; // Show to measure width
             const bubbleWidth = speechBubbleEl.offsetWidth;
             let bubbleLeft = dino.x + (dino.width / 2) - (bubbleWidth / 2);
-            if (bubbleLeft < 10) {
-                bubbleLeft = 10;
-            }
-            if (bubbleLeft + bubbleWidth > canvas.width - 10) {
-                bubbleLeft = canvas.width - bubbleWidth - 10;
+            if (bubbleLeft < 10) bubbleLeft = 10;
+            if (bubbleLeft + bubbleWidth > canvas.width - 15) { // Added padding
+                bubbleLeft = canvas.width - bubbleWidth - 15;
             }
 
             speechBubbleEl.style.left = `${bubbleLeft}px`;
             speechBubbleEl.style.top = `${dino.y - speechBubbleEl.offsetHeight - 10}px`;
-            speechBubbleEl.style.display = 'block';
             
             setTimeout(() => {
                 const dinoData = DINO_FRIENDS_DATA.find(d => d.name === dino.name);
@@ -585,23 +601,17 @@
         }
 
         function handleFriendResponse(isFriend) {
-            // Guard para evitar doble ejecución
             if (!gameState.currentEncounter) return;
-
             realDinoImgEl.style.display = 'none';
             realDinoNameEl.textContent = '';
-            
             friendModal.classList.remove('visible');
             speechBubbleEl.style.display = 'none';
 
             if (isFriend) {
                 gameState.friends.push(gameState.currentEncounter);
                 dinoImages[gameState.currentEncounter.name].isFriend = true; 
-                
                 gameState.otherDinos = gameState.otherDinos.filter(d => d !== gameState.currentEncounter);
-
                 updateUI();
-
                 if (gameState.friends.length >= DINO_FRIENDS_DATA.length) {
                     endRound();
                 } else {
@@ -609,7 +619,6 @@
                 }
             } else {
                 document.getElementById('no-penalty-message').style.display = 'block';
-                
                 setTimeout(() => {
                     friendModal.classList.remove('visible');
                     gameState.isPaused = false;
@@ -623,10 +632,8 @@
             const endTitle = document.getElementById('end-round-title');
             const endText = document.getElementById('end-round-text');
             const nextBtn = document.getElementById('next-round-button');
-
             endTitle.textContent = "¡FELICIDADES, MATEO!";
             endText.textContent = `¡Has hecho ${DINO_FRIENDS_DATA.length} amigos dinosaurios! Eres un gran amigo.`;
-
             if (gameState.round < gameState.maxRounds) {
                 nextBtn.textContent = "Jugar otra ronda";
                 nextBtn.style.display = 'block';
@@ -642,7 +649,6 @@
             friendsCountEl.textContent = gameState.friends.length;
             calmPointsEl.textContent = Math.floor(gameState.calmPoints);
             roundCountEl.textContent = gameState.round;
-
             friendsListEl.innerHTML = '';
             gameState.friends.forEach(friend => {
                 if (friend) {
